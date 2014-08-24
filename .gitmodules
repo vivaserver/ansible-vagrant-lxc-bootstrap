@@ -1,0 +1,3 @@
+[submodule "provisioning/playbooks"]
+	path = provisioning/playbooks
+	url = https://github.com/vivaserver/ansible-playbooks.git

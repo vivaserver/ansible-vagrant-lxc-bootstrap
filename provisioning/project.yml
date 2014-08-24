@@ -1,0 +1,16 @@
+---
+- hosts: all
+  tasks:
+    - name: ensure package archive up-to-date
+      apt: update_cache=yes cache_valid_time=3600
+      sudo: yes
+
+    - name: ensure PPA repos addition supported
+      apt: pkg=python-pycurl state=present
+      sudo: yes
+
+    - include: playbooks/tasks/dotfiles.yml
+
+    - name: clean packages
+      command: apt-get autoclean
+      sudo: yes
