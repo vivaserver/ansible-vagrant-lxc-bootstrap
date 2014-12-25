@@ -1,89 +1,126 @@
 # Vagrant with LXC provider and Ansible provisioning bootstrap
 
-See nice introduction at http://pfigue.github.io/blog/2014/01/25/using-vagrant-with-lxc-linux-containers/
+Have just one Vagrantfile w/multiple VM configurations and deployment playbooks. Effectively documenting all the project's infrastructure.
 
-## Sample usage
+refs.
+  - http://pfigue.github.io/blog/2014/01/25/using-vagrant-with-lxc-linux-containers/
+  - http://www.capsunlock.net/2014/02/vagrant-ansible-provisioning-add-roles-using-ansible-galaxy.html
+  - https://github.com/cocoy/vagrant_ansible/blob/master/Vagrantfile
 
-Have a `provisioning/project.yaml` file in your Vagrant directory with the following contents:
 
-    ---
-    - hosts: all
-      handlers:
-      - include: handlers/lamp.yml
-      tasks:
-      - include: tasks/dotfiles.yml
-      - include: tasks/lamp.yml
-      - include: tasks/phpmyadmin.yml
+## vagrant-lxc plugin for Vagrant 1.6
 
-Now include it in your `Vagrantfile` as a provider:
+Vagrant 1.6 allows the downloading of VM images from Vagrant cloud. See available LXC "boxes":
 
-    config.vm.provision :ansible do |ansible|
-      ansible.playbook = "provisioning/project.yml"
-      ansible.verbose = 'vv'
+https://vagrantcloud.com/search?utf8=%E2%9C%93&sort=&provider=&q=lxc
+
+And in your Vagrantfile:
+
+    ...
+    config.vm.box = "fgrehm/precise64-lxc"
+    ...
+
+Installation:
+
+    $ vagrant plugin install vagrant-lxc --plugin-version 1.0.0.alpha.3
+
+ref. https://github.com/fgrehm/vagrant-lxc#installation
+
+Also note lxc 0.7.5 "fix" for Ubuntu 12.04 on your Vagrantfile:
+
+    ...
+    config.vm.provider :lxc do |lxc|
+      lxc.backingstore = 'none'
     end
+    ...
+
+ref. https://github.com/fgrehm/vagrant-lxc#backingstore-options
 
 
-## Vagrant
+## Provisioning VMs selectively
 
-Tested against these package versions:
+Bring up & provision the "lemp" box:
 
-- Vagrant 1.3.5
-- vagrant-lxc plugin 0.7.0
-- Ansible 1.5
+    $ vagrant up lemp --provider=lxc
+    ...
+    $ vagrant status lemp
+    $ vagrant provision lemp
+    ...
+    $ vagrant halt lemp
+    $ vagrant destroy lemp
 
-### Boxes
+Bring up & provision the "services" box:
 
-Initially based off stock `vagrant-lxc-precise-amd64-2013-09-28.box` image.
+    $ vagrant up services --provider=lxc
+    ...
+    $ vagrant status services
+    $ vagrant provision services
+    ...
+    $ vagrant halt services
+    $ vagrant destroy services
 
-#### Custom LXC-enabled box
+Previous single-Vagrantfile projects Git-tagged as follows:
 
-Vagrant box available at `vagrant-lxc-precise64-base-21.10.13.box`, generally imported as "lxc-precise64-base".
+    lamp            single Vagrantfile for lamp playbook
+    mssql           single Vagrantfile for services playbook
+    nginx           single Vagrantfile for lemp playbook
 
-* Chef-related packages removed
-* Ansible-related apt-enabling package added
-* Base packages updated as of 21.10.13
 
-#### Repackaging
+## Deploy a provisioning playbook to production using (mind `- hosts: all` line on playbook):
 
-Repack the base VM box from current using:
+    $ ansible-playbook --limit=mebac-jujuy.dyndns.org --inventory=provisioning/hosts -vv -K --sudo --tags=dyndns provisioning/services_backend.yml 
 
-    $ vagrant package
+but first:
 
-ref: https://github.com/fgrehm/vagrant-lxc/issues/195
+  * check for production values on each playbook
+  * copy your ssh keys to new VPS host [1]
+  * enable sudo privileges to your deployment user [2]
+
+[1]: http://procbits.com/2013/09/08/getting-started-with-ansible-digital-ocean
+[2]: https://www.digitalocean.com/community/articles/how-to-add-and-delete-users-on-ubuntu-12-04-and-centos-6
+
+
+Remotely execute arbitrary command using local hosts file:
+
+    $ ansible all -i provisioning/hosts -vv -K --sudo -m apt -a "upgrade=yes"  # Ansible 1.6
+    ...
+    $ ansible web -i provisioning/hosts -vv --ask-pass --ask-sudo-pass -m mysql_user -a "name=vivab0rg password= priv=*.*:ALL"
+    ...
+    $ ansible web -i provisioning/hosts -vv --ask-pass --ask-sudo-pass -a "reboot" -f 0
+    ...
+    $ ansible services -i provisioning/hosts -vv -u vagrant --sudo --private-key ~/.vagrant.d/insecure_private_key -m setup
+    $ ansible-playbook --limit=lemp --inventory=provisioning/hosts -vv -u vagrant --sudo --private-key ~/.vagrant.d/insecure_private_key --tags=fpm-fix provisioning/site.yml
 
 
 ## Ansible
 
 Remotely execute arbitrary command on Vagrant machine:
 
-    $ cd provisioning
-    $ ansible-playbook prep.yml --limit=prep --tags=ruby --inventory=../vagrant_ansible_inventory_prep -vv -u vagrant --sudo --private-key ~/.vagrant.d/insecure_private_key
-    ...
     $ ansible 10.0.3.89 -vvv -u vagrant --sudo --private-key ~/.vagrant.d/insecure_private_key -m apt -a "upgrade=yes"
 
 Target OS distributions on tasks:
 
-- name: ensure Quantal main repo.
-  apt_repository: repo='deb http://archive.ubuntu.com/ubuntu quantal main'
-  when: ansible_lsb.codename == 'precise'
-  sudo: yes
+    - name: ensure Quantal main repo.
+      apt_repository: repo='deb http://archive.ubuntu.com/ubuntu quantal main'
+      when: ansible_lsb.codename == 'precise'
+      sudo: yes
 
 More useful variables for "when":
 
-"ansible_architecture": "x86_64"
-"ansible_distribution": "Ubuntu",
-"ansible_distribution_release": "precise",
-"ansible_distribution_version": "12.04",
+    "ansible_architecture": "x86_64"
+    "ansible_distribution": "Ubuntu",
+    "ansible_distribution_release": "precise",
+    "ansible_distribution_version": "12.04",
 
 These need the `lsb_release` package:
 
-"ansible_lsb": {
-  "codename": "precise",
-  "description": "Ubuntu 12.04.2 LTS",
-  "id": "Ubuntu",
-  "major_release": "12",
-  "release": "12.04"
-},
+    "ansible_lsb": {
+      "codename": "precise",
+      "description": "Ubuntu 12.04.2 LTS",
+      "id": "Ubuntu",
+      "major_release": "12",
+      "release": "12.04"
+    },
 
 ref. http://docs.ansible.com/playbooks_variables.html
 
