@@ -5,17 +5,21 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  # All Vagrant configuration is done here. The most common configuration
-  # options are documented and commented below. For a complete reference,
-  # please see the online documentation at vagrantup.com.
-
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "lxc-precise64-base"
+  config.vm.define "project" do |project|  # namespace to have a sensible container name
+    project.vm.box = "fgrehm/precise64-lxc"
+    project.vm.provider :lxc do |lxc|
+      # lxc 0.7.5 on Ubuntu 12.04 "fix"
+      # ref. https://github.com/fgrehm/vagrant-lxc#backingstore-options
+      lxc.backingstore = 'none'
+    end
 
-  # The url from where the 'config.vm.box' box will be fetched if it
-  # doesn't already exist on the user's system.
-  # config.vm.box_url = "~/devel/vagrant-boxes/vagrant-lxc-precise64-base-21.10.13.box"
-  # config.vm.box_url = "~/devel/vagrant-boxes/vagrant-lxc-saucy64-base-03.03.14.box"
+    # ref. http://docs.vagrantup.com/v2/provisioning/ansible.html
+    project.vm.provision :ansible do |ansible|
+      ansible.playbook = "provisioning/project.yml"
+      ansible.verbose = 'vv'
+    end
+  end
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
@@ -40,10 +44,4 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
   # config.vm.synced_folder "../data", "/vagrant_data"
-
-  # ref. http://docs.vagrantup.com/v2/provisioning/ansible.html
-  config.vm.provision :ansible do |ansible|
-    ansible.playbook = "provisioning/project.yml"
-    ansible.verbose = 'vv'
-  end
 end
