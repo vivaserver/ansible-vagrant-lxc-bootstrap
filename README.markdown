@@ -66,7 +66,9 @@ Previous single-Vagrantfile projects Git-tagged as follows:
     nginx           single Vagrantfile for lemp playbook
 
 
-## Deploy a provisioning playbook to production using (mind `- hosts: all` line on playbook):
+## Deploy a provisioning playbook to production 
+
+(mind `- hosts: all` line on playbook):
 
     $ ansible-playbook --limit=mebac-jujuy.dyndns.org --inventory=provisioning/hosts -vv -K --sudo --tags=dyndns provisioning/services_backend.yml 
 
@@ -94,7 +96,7 @@ Remotely execute arbitrary command using local hosts file:
 
 ## Ansible
 
-Remotely execute arbitrary command on Vagrant machine:
+Execute arbitrary command on Vagrant machine:
 
     $ ansible 10.0.3.89 -vvv -u vagrant --sudo --private-key ~/.vagrant.d/insecure_private_key -m apt -a "upgrade=yes"
 
