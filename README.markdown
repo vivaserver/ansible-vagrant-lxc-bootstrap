@@ -129,5 +129,7 @@ ref. http://docs.ansible.com/playbooks_variables.html
 As a reminder, to see what facts are available on a particular system, you can do:
 
     $ ansible default -i provisioning/hosts -vv -u vagrant --sudo --private-key ~/.vagrant.d/insecure_private_key -m setup
+    ...
+    $ ansible localhost -vv -m setup
 
 (c)2014 Cristian R. Arroyo
